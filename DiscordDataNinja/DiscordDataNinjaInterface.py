@@ -46,7 +46,10 @@ while True:
             if chunkPath == "c":
                 break
             else:
-                chunkList.append(chunkPath)
+                if chunkPath[0] == '"' and chunkPath[-1] == '"':
+                    chunkList.append(chunkPath[1:-1])
+                else:
+                    chunkList.append(chunkPath)
 
         ddn.assembleChunks(chunkList)
 

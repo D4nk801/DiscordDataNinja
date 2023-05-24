@@ -75,7 +75,7 @@ class DiscordDataNinja:
 
         #Organise the files so it can be reconstructed correctly
         for chunkFile in filePathsList:
-            with open(chunkFile[1:-1], "rb") as f:
+            with open(chunkFile, "rb") as f:
                 chunkBytes = f.read()
                 chunkInfo = self.readHeader(chunkBytes)
                 chunkList.insert(chunkInfo[2], chunkFile)
@@ -86,10 +86,10 @@ class DiscordDataNinja:
 
                 f.close()
             
-        with open(f"{(os.path.dirname(chunkList[0]))[1:]}\{outFileName}", "wb") as outFile:
+        with open(f"{(os.path.dirname(chunkList[0]))}\{outFileName}", "wb") as outFile:
             for chunkFile in chunkList:
                 chunkShortSHA256 = ''
-                with open(chunkFile[1:-1], "rb") as f:
+                with open(chunkFile, "rb") as f:
                     chunkBytes = f.read()
                     chunkShortSHA256 = self.readHeader(chunkBytes)[4]
                     chunkHeaderSHA256 = int(hashlib.sha256(chunkBytes[inFileHeaderLength + 4 : ]).hexdigest()[-8:], 16)
