@@ -18,9 +18,12 @@
 from DiscordDataNinja import DiscordDataNinja
 import os
 
+#tkinter is used to open a file dialog
+import tkinter.filedialog as tkfd
+
 ddn = DiscordDataNinja()
 
-print("""Discord Data Ninja development stage testing interface (v0.1)
+print("""Discord Data Ninja development stage testing interface (v0.2)
 
 """)
 print("""--- This program is purely for testing and might not support all the functions of Discord Data Ninja.
@@ -47,7 +50,10 @@ while True:
 
     if choice == "1":
         os.system("cls")
-        filePath = str(input("Please drag and frop the file: "))
+        filePath = str(input("Please drag and frop the file (type f to open a file dialog): "))
+        if filePath.lower() == 'f':
+            filePath = tkfd.askopenfilename()
+
         if filePath[0] == '"' and filePath[-1] == '"':
             filePath = filePath[1:-1]
 
@@ -59,9 +65,14 @@ while True:
     Files can be input at any order.""")
         chunkList = []
         while True:
-            chunkPath = input("Please drag and drop the file").lower()
+            chunkPath = input("Please drag and drop the file (type f to open a file dialog): ").lower()
             if chunkPath == "c":
                 break
+
+            elif chunkPath == "f":
+                chunkList = tkfd.askopenfilenames()
+                break
+
             else:
                 if chunkPath[0] == '"' and chunkPath[-1] == '"':
                     chunkList.append(chunkPath[1:-1])

@@ -29,7 +29,7 @@ class DiscordDataNinja:
         #safe mode to be turned off.
         self.safeMode = safeMode
 
-    def createChunks(self, filePath):
+    def createChunks(self, filePath, fileOutputPath = None):
         headerSize = self.MIN_HEADER_SIZE + len( (os.path.splitext(filePath))[1] )
         fileSize = os.path.getsize(filePath)
         fileChunkNumber = math.ceil( (fileSize + (headerSize * math.ceil( fileSize / self.MAX_FILE_SIZE ))) / self.MAX_FILE_SIZE )  
@@ -84,7 +84,7 @@ class DiscordDataNinja:
 
     #TODO: Check for hash to make sure the data is intact for the final file (chunk check is done)
     #This function is not super efficient. Could be improved in the future. I cannot be bothered right now. 
-    def assembleChunks(self, filePathsList):
+    def assembleChunks(self, filePathsList, fileOutputPath = None):
         chunkList = []
         inFileHeaderLength = 0
         outFileExt = 0
