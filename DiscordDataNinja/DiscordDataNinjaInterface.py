@@ -45,7 +45,7 @@ class configFile():
         self.asmbFileInputPath = ""
         self.config = configparser.ConfigParser()
 
-        #Read the config file. Make sure it It it doesn't exist, create a new config file
+        #Read the config file. Make sure it doesn't exist, create a new config file
         try:
             self.config.read("settings.ini")
             self.ddnFileOutputPath = self.config["options"]["defaultddnOutputPath"]
