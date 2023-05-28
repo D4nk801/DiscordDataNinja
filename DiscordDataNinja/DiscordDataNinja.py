@@ -21,18 +21,23 @@ import hashlib
 
 
 class DiscordDataNinja:
-    def __init__(self, MAX_FILE_SIZE = 26214400, MIN_HEADER_SIZE = 16, safeMode = True):
+    def __init__(self, MAX_FILE_SIZE = 26214400, MIN_HEADER_SIZE = 16, safeMode = True, asmbFileOutputPath = "None", ddnFileOutputPath = "None"):
         self.MAX_FILE_SIZE = MAX_FILE_SIZE
         self.MIN_HEADER_SIZE = MIN_HEADER_SIZE
 
-        #Disabling safe mode can cause the program to change constants, enable the program to act in a unpredicted or non user friendly manner. Some functionality may require 
+        #Disabling safe mode can cause the program to change constants, enable the program to act in an unpredicted or non user friendly manner. Some functionality may require 
         #safe mode to be turned off.
         self.safeMode = safeMode
 
-    def createChunks(self, filePath, fileOutputPath = None):
+        self.ddnFileOutputPath = ddnFileOutputPath
+        self.asmbFileOutputPath = asmbFileOutputPath
+
+
+    def createChunks(self, filePath):
         headerSize = self.MIN_HEADER_SIZE + len( (os.path.splitext(filePath))[1] )
         fileSize = os.path.getsize(filePath)
         fileChunkNumber = math.ceil( (fileSize + (headerSize * math.ceil( fileSize / self.MAX_FILE_SIZE ))) / self.MAX_FILE_SIZE )  
+        outputPath = self.ddnFileOutputPath
 
         #A soft limit to put in place to make sure the a really long file extension is not used. This can be disabled by initialising the class with safeMode = False.
         if headerSize > 255 and self.safeMode:
@@ -45,7 +50,7 @@ class DiscordDataNinja:
         
         with open(filePath, "rb") as f:
             fileBytes = f.read()
-
+            
             fileSHA256 = hashlib.sha256(fileBytes).hexdigest()
             fileShortSHA256 = fileSHA256[-8:]   #The last 4 bytes of the SHA256 hash of the file
 
@@ -60,7 +65,7 @@ class DiscordDataNinja:
 
                 print(f"The SHA256 for chunk {chunkNumber} is {chunkSHA256}")
 
-                chunkFileName = f"{os.path.dirname(filePath)}/chunk{chunkNumber}.ddn"
+                if outputPath == "None": outputPath = os.path.dirname(filePath)
 
                 headerBytes = [(bytes(".ddn", encoding="utf-8")),
                                 (int(headerSize - 4).to_bytes(2, "big")),
@@ -69,7 +74,7 @@ class DiscordDataNinja:
                                 (int(fileShortSHA256, 16).to_bytes(4, "big")),
                                 (int(chunkShortSHA256, 16).to_bytes(4, "big"))]
 
-                with open(chunkFileName, "wb") as outFile:
+                with open(f"{outputPath}/chunk{chunkNumber}.ddn", "wb") as outFile:
                     for i in headerBytes:
                         outFile.write(i)
 
@@ -79,19 +84,19 @@ class DiscordDataNinja:
             f.close()
             
             return(True)
-            #print("Operation Success")
     
 
     #TODO: Check for hash to make sure the data is intact for the final file (chunk check is done)
     #This function is not super efficient. Could be improved in the future. I cannot be bothered right now. 
-    def assembleChunks(self, filePathsList, fileOutputPath = None):
+    def assembleChunks(self, inputFilePathsList):
         chunkList = []
         inFileHeaderLength = 0
         outFileExt = 0
         outFileName = ""
+        outputPath = self.asmbFileOutputPath
 
         #Organise the files so it can be reconstructed correctly
-        for chunkFile in filePathsList:
+        for chunkFile in inputFilePathsList:
             with open(chunkFile, "rb") as f:
                 chunkBytes = f.read()
                 chunkInfo = self.readHeader(chunkBytes)
@@ -102,8 +107,10 @@ class DiscordDataNinja:
                 outFileName = f"ddn_assembled{outFileExt}"
 
                 f.close()
-            
-        with open(f"{(os.path.dirname(chunkList[0]))}\{outFileName}", "wb") as outFile:
+
+        if outputPath == "None": outputPath = os.path.dirname(chunkList[0])
+        
+        with open(f"{outputPath}\{outFileName}", "wb") as outFile:
             for chunkFile in chunkList:
                 chunkShortSHA256 = ''
                 with open(chunkFile, "rb") as f:

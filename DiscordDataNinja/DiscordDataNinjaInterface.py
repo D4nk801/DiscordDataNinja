@@ -17,13 +17,15 @@
 
 from DiscordDataNinja import DiscordDataNinja
 import os
+import configparser
 
 #tkinter is used to open a file dialog
 import tkinter.filedialog as tkfd
 
-ddn = DiscordDataNinja()
 
-print("""Discord Data Ninja development stage testing interface (v0.2)
+VERSION = "0.3"
+
+print(f"""Discord Data Ninja development stage testing interface (v{VERSION})
 
 """)
 print("""--- This program is purely for testing and might not support all the functions of Discord Data Ninja.
@@ -35,9 +37,43 @@ if agreed == "yes" or agreed == "y":
     pass
 else:
     exit()
+
+#A simple class to manage the settings file creation and to hold the contents
+class configFile():
+    def __init__(self):
+        self.ddnFileOutputPath = ""
+        self.asmbFileInputPath = ""
+        self.config = configparser.ConfigParser()
+
+        #Read the config file. Make sure it It it doesn't exist, create a new config file
+        try:
+            self.config.read("settings.ini")
+            self.ddnFileOutputPath = self.config["options"]["defaultddnOutputPath"]
+            self.asmbFileInputPath = self.config["options"]["defaultasmOutputPath"]
+
+        #File doesn't exist or maybe you cant access it right now. Create a new one anyway.
+        except:
+            with open("settings.ini", "w") as settingsFile:
+                self.config["options"] = {"defaultddnOutputPath": "None",
+                                          "defaultasmOutputPath": "None"
+                                        }
+                self.ddnFileOutputPath = self.config["options"]["defaultddnOutputPath"]
+                self.asmbFileInputPath = self.config["options"]["defaultasmOutputPath"]
+                self.config.write(settingsFile)
+                settingsFile.close()
+
+        #I currently have no clue what triggers this :/
+        else:
+            print("An unexpected error occured while opening the settings file")        
+
+
+configData = configFile()
+ddn = DiscordDataNinja(asmbFileOutputPath = configData.asmbFileInputPath, ddnFileOutputPath = configData.ddnFileOutputPath)    
+
+
 while True:                                                           
-    os.system("cls")
-    print("""Discord Data Ninja development stage testing interface (v0.1)
+    #os.system("cls")
+    print(f"""Discord Data Ninja development stage testing interface (v{VERSION})
 
     """)
     print("""Options:
@@ -52,7 +88,7 @@ while True:
         os.system("cls")
         filePath = str(input("Please drag and frop the file (type f to open a file dialog): "))
         if filePath.lower() == 'f':
-            filePath = tkfd.askopenfilename()
+            filePath = tkfd.askopenfilename(title="Select file")
 
         if filePath[0] == '"' and filePath[-1] == '"':
             filePath = filePath[1:-1]
@@ -70,7 +106,7 @@ while True:
                 break
 
             elif chunkPath == "f":
-                chunkList = tkfd.askopenfilenames()
+                chunkList = tkfd.askopenfilenames(title="Select ddn files", filetypes=[("Discord Data Ninja files",".ddn")])
                 break
 
             else:
