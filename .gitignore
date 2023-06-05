@@ -366,3 +366,6 @@ FodyWeavers.xsd
 /test_asmOutput
 *.ini
 .vscode/launch.json
+documentation.txt
+test.txt
+DiscordDataNinja/headerTest.py
