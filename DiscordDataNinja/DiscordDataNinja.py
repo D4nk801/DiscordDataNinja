@@ -1,4 +1,4 @@
-#Discord Data Ninja core functions library
+#Discord Data Ninja core functions library (EXTENDED HEADER)
 #Copyright (C) 2023  Utku Turker
 
 #This program is free software: you can redistribute it and/or modify
@@ -21,60 +21,66 @@ import hashlib
 
 
 class DiscordDataNinja:
-    def __init__(self, MAX_FILE_SIZE = 26214400, MIN_HEADER_SIZE = 16, safeMode = True, asmbFileOutputPath = "None", ddnFileOutputPath = "None"):
-        self.MAX_FILE_SIZE = MAX_FILE_SIZE
-        self.MIN_HEADER_SIZE = MIN_HEADER_SIZE
+    __version__ = "1.0.0"
+    __binver__ = ''.join(format(int(c), 'b').zfill(b) for c, b in zip(__version__.split('.'), [4, 5, 7])) #The version in a binary format (0000 00000 0000000)[major, minor, patch]
 
-        #Disabling safe mode can cause the program to change constants, enable the program to act in an unpredicted or non user friendly manner. Some functionality may require 
-        #safe mode to be turned off.
-        self.safeMode = safeMode
+    def __init__(self, MAX_FILE_SIZE = 26214400, asmbFileOutputPath = "None", ddnFileOutputPath = "None"):
+        self.MAX_FILE_SIZE = MAX_FILE_SIZE
+        self.__MIN_HEADER_SIZE = 25 #The minimum header size is the size of the header without the input file extension added onto it.
 
         self.ddnFileOutputPath = ddnFileOutputPath
         self.asmbFileOutputPath = asmbFileOutputPath
 
 
     def createChunks(self, filePath):
-        headerSize = self.MIN_HEADER_SIZE + len( (os.path.splitext(filePath))[1] )
+        headerSize = self.__MIN_HEADER_SIZE + len( (os.path.splitext(filePath))[1][1:] )
         fileSize = os.path.getsize(filePath)
         fileChunkNumber = math.ceil( (fileSize + (headerSize * math.ceil( fileSize / self.MAX_FILE_SIZE ))) / self.MAX_FILE_SIZE )  
         outputPath = self.ddnFileOutputPath
 
-        #A soft limit to put in place to make sure the a really long file extension is not used. This can be disabled by initialising the class with safeMode = False.
-        if headerSize > 255 and self.safeMode:
-            raise RuntimeError("Woah! Something is wrong with your files! How long are your are your file extensions?!")
-
         #A soft limit to prevent a user from dividing a really large file into too many files. This also disables the 65536 hard chunk limit caused due to
-        #the way the header structure is designed. This can be disabled by initialising the class with safeMode = False.
-        if fileChunkNumber > 255 and self.safeMode:
+        #the way the header structure is designed.
+        if fileChunkNumber > 255:
             raise RuntimeError("Woah! Your files are too powerful, even for a ninja.")
-        
+
+                   
         with open(filePath, "rb") as f:
             fileBytes = f.read()
             
             fileSHA256 = hashlib.sha256(fileBytes).hexdigest()
-            fileShortSHA256 = fileSHA256[-8:]   #The last 4 bytes of the SHA256 hash of the file
+            fileShortSHA256 = fileSHA256[-16:]   #The last 8 bytes of the SHA256 hash of the file
 
             print(f"Your file will been seperated into {fileChunkNumber} pieces!")
-            print(f"The SHA256 for the original file is: {fileSHA256}")        
+            print(f"The SHA256 for the original file is: {fileSHA256} ShortSHA: {fileShortSHA256}")        
+
+            headerBytes = [
+                (bytes("ddn", encoding="utf-8")),
+                (int(self.__binver__, 2).to_bytes(2, "big")),
+                (int(headerSize).to_bytes(2, "big")),
+                None,
+                (int(fileShortSHA256, 16).to_bytes(8, "big")),
+                None,
+                #Bytes can be added ito the header (after the necessary bits and before the file extension) to extend functionality while keeping backwards compatibility. 
+                #Change the "__MIN_HEADER_SIZE" variable to ensure that the program is aware of the additional bytes.
+                #(int(0).to_bytes(16, "big")), 
+                (bytes((os.path.splitext(filePath))[1][1:], encoding="utf-8"))
+                ]
 
             for chunkNumber in range(fileChunkNumber):
                 chunkBytes = fileBytes[(chunkNumber * (self.MAX_FILE_SIZE - headerSize)) : ((chunkNumber + 1) * (self.MAX_FILE_SIZE - headerSize))] 
                 
                 chunkSHA256 = hashlib.sha256(chunkBytes).hexdigest()
-                chunkShortSHA256 = chunkSHA256[-8:] #The last 4 bytes of the SHA256 hash of the chunk
+                chunkShortSHA256 = chunkSHA256[-16:] #The last 8 bytes of the SHA256 hash of the chunk
 
-                print(f"The SHA256 for chunk {chunkNumber} is {chunkSHA256}")
+                print(f"The SHA256 for chunk {chunkNumber} is {chunkSHA256} ShortSHA: {chunkShortSHA256}")
 
                 if outputPath == "None": outputPath = os.path.dirname(filePath)
 
-                headerBytes = [(bytes(".ddn", encoding="utf-8")),
-                                (int(headerSize - 4).to_bytes(2, "big")),
-                                (bytes((os.path.splitext(filePath))[1], encoding="utf-8")),
-                                (int(chunkNumber).to_bytes(2, "big")),
-                                (int(fileShortSHA256, 16).to_bytes(4, "big")),
-                                (int(chunkShortSHA256, 16).to_bytes(4, "big"))]
+                headerBytes[3] = int(chunkNumber).to_bytes(2, "big")
+                headerBytes[5] = int(chunkShortSHA256, 16).to_bytes(8, "big")
 
                 with open(f"{outputPath}/chunk{chunkNumber}.ddn", "wb") as outFile:
+
                     for i in headerBytes:
                         outFile.write(i)
 
@@ -91,7 +97,7 @@ class DiscordDataNinja:
     def assembleChunks(self, inputFilePathsList):
         chunkList = []
         inFileHeaderLength = 0
-        outFileExt = 0
+        outFileExt = ""
         outFileName = ""
         outputPath = self.asmbFileOutputPath
 
@@ -102,9 +108,9 @@ class DiscordDataNinja:
                 chunkInfo = self.readHeader(chunkBytes)
                 chunkList.insert(chunkInfo[2], chunkFile)
 
-                inFileHeaderLength = chunkInfo[0]
-                outFileExt = chunkInfo[1]
-                outFileName = f"ddn_assembled{outFileExt}"
+                inFileHeaderLength = chunkInfo[1]
+                outFileExt = chunkInfo[5]
+                outFileName = f"ddn_assembled.{outFileExt}"
 
                 f.close()
 
@@ -116,51 +122,30 @@ class DiscordDataNinja:
                 with open(chunkFile, "rb") as f:
                     chunkBytes = f.read()
                     chunkShortSHA256 = self.readHeader(chunkBytes)[4]
-                    chunkHeaderSHA256 = int(hashlib.sha256(chunkBytes[inFileHeaderLength + 4 : ]).hexdigest()[-8:], 16)
+                    chunkHeaderSHA256 = int(hashlib.sha256(chunkBytes[inFileHeaderLength: ]).hexdigest()[-16:], 16)
                     
                     # Check the chunk's SHA256 to make sure the chunk has no errors
                     if chunkShortSHA256 == chunkHeaderSHA256:
-                        outFile.write(chunkBytes[inFileHeaderLength + 4 : ])
+                        outFile.write(chunkBytes[inFileHeaderLength: ])
                     else:
                         raise RuntimeError("The hash of the chunk didn't match. Cancelling")
             
             outFile.close()
 
 
-
-    def readHeader(self, dataBytes, searchHeader = False, maxSearchLength = 1000):
-        HEADER_OFFSET = 0   #This is a constant that sometimes changes??? See below...
-
-        #If "searchHeader" is True (and safeMode is False), the program will search for the header if it doesn't find it at byte 0. It can potentially take a lot of time to
-        #find the header so it is not enabled by default. This is possibly useful if extra data is added before the header or for supporting future extended header versions. 
-        if searchHeader and not self.safeMode:   
-            for i in range(self.MAX_FILE_SIZE - self.MIN_HEADER_SIZE):
-                if dataBytes[HEADER_OFFSET : HEADER_OFFSET + 4].decode("ascii") != ".ddn":
-                    HEADER_OFFSET += 1
-                    
-                    #The following bit is to make sure the console printing process is not causing the program to slow down.
-                    if i < maxSearchLength and i % math.ceil(maxSearchLength / 10) == 0:
-                        print(f"Looking for header... Current offset:{HEADER_OFFSET}")
-                    if i > maxSearchLength:
-                        raise RuntimeError("Damaged header or Wrong file format")
-
-                elif dataBytes[HEADER_OFFSET : HEADER_OFFSET + 4].decode("ascii") == ".ddn":
-                    break
-
-                else:
-                    raise RuntimeError("Damaged header or Wrong file format")
-
+    def readHeader(self, dataBytes): 
    
-        elif dataBytes[HEADER_OFFSET : HEADER_OFFSET + 4].decode("ascii") != ".ddn":
+        if dataBytes[0:4].decode("ascii") == ".ddn":
+            raise RuntimeError(f"Library version 1.0.0 and up are not compatible with this file")       
+        elif dataBytes[0:3].decode("ascii") != "ddn":
             raise RuntimeError("Damaged header or Wrong file format")
+        
+        version = int.from_bytes(dataBytes[3:5], "big")
+        headerLength = int.from_bytes(dataBytes[5:7], "big") 
+        chunkIdx = int.from_bytes(dataBytes[7:9], "big")
+        orgShortSHA256 = int.from_bytes(dataBytes[9:17], "big")
+        chunkShortSHA256 = int.from_bytes(dataBytes[17:25], "big")
+        orgFileExt = dataBytes[self.__MIN_HEADER_SIZE:headerLength].decode("utf-8")
 
-        print("Header detected. Reading...")
-
-        headerLength = int.from_bytes(dataBytes[HEADER_OFFSET + 4 : HEADER_OFFSET + 6], "big")   
-        orgFileExt = dataBytes[HEADER_OFFSET + 6 : HEADER_OFFSET + headerLength - 6].decode("utf-8")
-        chunkIdx = int.from_bytes(dataBytes[HEADER_OFFSET + headerLength - 6 : HEADER_OFFSET + headerLength - 4], "big")
-        orgShortSHA256 = int.from_bytes(dataBytes[HEADER_OFFSET + headerLength - 4 : HEADER_OFFSET + headerLength], "big")
-        chunkShortSHA256 = int.from_bytes(dataBytes[HEADER_OFFSET + headerLength : HEADER_OFFSET + headerLength + 4], "big")
-
-        return [headerLength, orgFileExt, chunkIdx, orgShortSHA256, chunkShortSHA256]
+        return [version, headerLength, chunkIdx, orgShortSHA256, chunkShortSHA256, orgFileExt]
                 

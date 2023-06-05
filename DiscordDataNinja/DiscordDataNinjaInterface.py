@@ -15,7 +15,7 @@
 #along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 
-from DiscordDataNinja import DiscordDataNinja
+from DiscordDataNinja import DiscordDataNinja 
 import os
 import configparser
 
@@ -26,8 +26,9 @@ import tkinter.filedialog as tkfd
 VERSION = "0.3"
 
 print(f"""Discord Data Ninja development stage testing interface (v{VERSION})
-
+      
 """)
+
 print("""--- This program is purely for testing and might not support all the functions of Discord Data Ninja.
 Full predictable operation of this program is NOT guranteed! Use at your own risk! Don't use for critical
 and/or important files! ---""")
@@ -74,6 +75,7 @@ ddn = DiscordDataNinja(asmbFileOutputPath = configData.asmbFileInputPath, ddnFil
 while True:                                                           
     #os.system("cls")
     print(f"""Discord Data Ninja development stage testing interface (v{VERSION})
+ddn library version {ddn.__version__}
 
     """)
     print("""Options:
